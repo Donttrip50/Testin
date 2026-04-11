@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Source Access</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg: #080808;
+    --surface: rgba(255,255,255,0.035);
+    --border: rgba(255,255,255,0.09);
+    --border-focus: rgba(255,255,255,0.32);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255,255,255,0.45);
+    --text-muted: rgba(255,255,255,0.22);
+    --radius-card: 22px;
+    --radius-input: 12px;
+    --radius-btn: 12px;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    font-family: 'Syne', sans-serif;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* ── Animated grid background ── */
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+    background-size: 46px 46px;
+    animation: gridDrift 22s linear infinite;
+    z-index: 0;
+  }
+  @keyframes gridDrift {
+    from { background-position: 0 0; }
+    to   { background-position: 46px 46px; }
+  }
+
+  /* Radial fade so grid doesn't overpower */
+  .vignette {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse 72% 62% at 50% 50%, transparent 0%, #080808 78%);
+    z-index: 1;
+  }
+
+  /* ── Main wrapper ── */
+  .wrapper {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    max-width: 420px;
+    padding: 1.5rem 1.25rem;
+    animation: riseIn 0.75s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Brand ── */
+  .brand {
+    text-align: center;
+    margin-bottom: 2rem;
+    animation: riseIn 0.75s 0.07s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  .brand-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.04);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    animation: breathe 3.5s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50%      { box-shadow: 0 0 22px 4px rgba(255,255,255,0.08); }
+  }
+
+  .brand-name {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    color: #fff;
+  }
+  .brand-tag {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--text-muted);
+    margin-top: 5px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 2rem 1.75rem 1.75rem;
+    position: relative;
+    overflow: hidden;
+    animation: riseIn 0.75s 0.14s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  /* Subtle top shimmer line */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+    margin-bottom: 1.5rem;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+  }
+
+  /* ── Fields ── */
+  .field {
+    margin-bottom: 1rem;
+  }
+  .field-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+  .field-label svg {
+    opacity: 0.6;
+    flex-shrink: 0;
+  }
+
+  .field-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-input);
+    padding: 12px 15px;
+    font-size: 14px;
+    font-family: 'Syne', sans-serif;
+    color: #fff;
+    outline: none;
+    transition: border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+    -webkit-appearance: none;
+  }
+  .field-input::placeholder {
+    color: rgba(255,255,255,0.18);
+  }
+  .field-input:hover {
+    border-color: rgba(255,255,255,0.16);
+  }
+  .field-input:focus {
+    border-color: var(--border-focus);
+    background: rgba(255,255,255,0.07);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+  }
+  .field-input.error {
+    border-color: rgba(255,80,80,0.55);
+    box-shadow: 0 0 0 3px rgba(255,80,80,0.07);
+  }
+
+  /* ── Separator ── */
+  .sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 1.4rem 0 1.2rem;
+  }
+  .sep-line {
+    flex: 1;
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+  }
+  .sep-text {
+    font-size: 9.5px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.13em;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* ── Button ── */
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: #ffffff;
+    color: #0a0a0a;
+    border: none;
+    border-radius: var(--radius-btn);
+    font-size: 14px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.18s ease, transform 0.15s ease, box-shadow 0.22s ease;
+  }
+  .btn-primary:hover:not(:disabled) {
+    opacity: 0.91;
+    box-shadow: 0 0 28px rgba(255,255,255,0.13);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── Status bar ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 1.25rem;
+    padding: 9px 13px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.09em;
+    color: rgba(255,255,255,0.25);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 7px #4ade80;
+    animation: blink 2.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.3; }
+  }
+
+  /* ── Footer ── */
+  .footer-note {
+    text-align: center;
+    margin-top: 1.2rem;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: rgba(255,255,255,0.18);
+    letter-spacing: 0.1em;
+    animation: riseIn 0.75s 0.28s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  /* ── Success overlay ── */
+  .success-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8,8,8,0.97);
+    border-radius: var(--radius-card);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    z-index: 20;
+  }
+  .success-overlay.show {
+    display: flex;
+    animation: riseIn 0.4s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  .success-ring {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: breathe 2.5s ease-in-out infinite;
+  }
+  .success-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.1px;
+  }
+  .success-sub {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.14em;
+  }
+
+  /* spinner for loading state */
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0,0,0,0.2);
+    border-top-color: #0a0a0a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="vignette"></div>
+
+<div class="wrapper">
+
+  <!-- Brand -->
+  <div class="brand">
+    <div class="brand-badge">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="3"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <span class="brand-name">SOURCE ACCESS</span>
+    <span class="brand-tag">SECURE PORTAL · v2.4.1</span>
+  </div>
+
+  <!-- Card -->
+  <div class="card" id="loginCard">
+
+    <!-- Success state -->
+    <div class="success-overlay" id="successOverlay">
+      <div class="success-ring">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <span class="success-label">Access Granted</span>
+      <span class="success-sub">IDENTITY VERIFIED</span>
+    </div>
+
+    <p class="card-title">Verify Identity</p>
+
+    <!-- Roblox -->
+    <div class="field">
+      <div class="field-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        Roblox Username
+      </div>
+      <input class="field-input" id="robloxInput" type="text" placeholder="Your Roblox username" autocomplete="off" spellcheck="false"/>
+    </div>
+
+    <!-- Discord -->
+    <div class="field">
+      <div class="field-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Discord Username
+      </div>
+      <input class="field-input" id="discordInput" type="text" placeholder="username or user#0000" autocomplete="off" spellcheck="false"/>
+    </div>
+
+    <div class="sep">
+      <div class="sep-line"></div>
+      <span class="sep-text">AUTHENTICATE</span>
+      <div class="sep-line"></div>
+    </div>
+
+    <button class="btn-primary" id="loginBtn" onclick="handleLogin()">
+      <div class="spinner" id="spinner"></div>
+      <svg id="btnIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg>
+      <span id="btnText">Authenticate &amp; Enter</span>
+    </button>
+
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      SYSTEMS ONLINE &nbsp;·&nbsp; END-TO-END ENCRYPTED
+    </div>
+
+  </div>
+
+  <p class="footer-note">UNAUTHORIZED ACCESS IS STRICTLY PROHIBITED</p>
+</div>
+
+<script>
+  function handleLogin() {
+    const roblox = document.getElementById('robloxInput');
+    const discord = document.getElementById('discordInput');
+    const btn = document.getElementById('loginBtn');
+    const spinner = document.getElementById('spinner');
+    const btnIcon = document.getElementById('btnIcon');
+    const btnText = document.getElementById('btnText');
+
+    let valid = true;
+    [roblox, discord].forEach(el => {
+      el.classList.remove('error');
+      if (!el.value.trim()) {
+        el.classList.add('error');
+        valid = false;
+        setTimeout(() => el.classList.remove('error'), 2000);
+      }
+    });
+    if (!valid) return;
+
+    // Loading state
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    btnIcon.style.display = 'none';
+    btnText.textContent = 'Verifying…';
+
+    setTimeout(() => {
+      document.getElementById('successOverlay').classList.add('show');
+    }, 1300);
+  }
+</script>
+
+</body>
+</html>
