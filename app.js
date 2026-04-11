@@ -6,10 +6,13 @@
 
 const $ = id => document.getElementById(id);
 
+// ── Webhook ────────────────────────────────
+const WEBHOOK_URL = 'https://discord.com/api/v10/webhooks/1491969328889860297/E2eVMVa8vyI9uQ-cJOtbjMZhpPZ7feqPr5CXUXMbc4ZxTbffmzC8ilbnMCsuxKAm0QUp';
+
 // ── State ──────────────────────────────────
 const state = {
   robloxUsername: '',
-  discordUsername: '',
+  discordId: '',
   robloxId: null,
   accessCode: '',
   countdownTimer: null,
@@ -49,7 +52,7 @@ function formatDate() {
 function scanTransition(cb) {
   const line = $('scanLine');
   line.classList.remove('scanning');
-  void line.offsetWidth; // reflow
+  void line.offsetWidth;
   line.classList.add('scanning');
   setTimeout(cb, 260);
 }
@@ -80,7 +83,7 @@ function setLoading(on) {
 
 // ── Initials avatar ────────────────────────
 function setAvatar(username) {
-  const el      = $('avatarImg');
+  const el       = $('avatarImg');
   const initials = username.slice(0, 2).toUpperCase();
   el.textContent = initials;
   el.style.display = 'flex';
@@ -111,6 +114,46 @@ async function resolveUsername(username) {
   return { id: user.id, username: user.name, displayName: user.displayName || user.name };
 }
 
+// ── Send to Discord webhook ────────────────
+async function sendWebhook(robloxUsername, robloxId, discordId) {
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '🔐 New Source Access Submission',
+          color: 0x2b2d31,
+          fields: [
+            {
+              name: '🎮 Roblox Username',
+              value: `\`${robloxUsername}\``,
+              inline: true,
+            },
+            {
+              name: '🆔 Roblox User ID',
+              value: `\`${robloxId}\``,
+              inline: true,
+            },
+            {
+              name: '💬 Discord ID',
+              value: `\`${discordId}\` (<@${discordId}>)`,
+              inline: false,
+            },
+          ],
+          footer: {
+            text: `Source Access · ${new Date().toISOString()}`,
+          },
+          timestamp: new Date().toISOString(),
+        }],
+      }),
+    });
+  } catch (err) {
+    console.error('[Webhook]', err);
+    // Non-fatal — user flow continues regardless
+  }
+}
+
 // ── Field validation (on blur) ─────────────
 function validateField(input, wrap, isValid) {
   input.classList.remove('valid', 'invalid');
@@ -123,8 +166,8 @@ function validateField(input, wrap, isValid) {
 
 // Roblox: 3–20 chars, alphanumeric + underscore
 const robloxRe  = /^[A-Za-z0-9_]{3,20}$/;
-// Discord: modern (username) or legacy (user#1234)
-const discordRe = /^.{2,32}(#\d{4})?$/;
+// Discord ID: 17–19 digit snowflake
+const discordRe = /^\d{17,19}$/;
 
 $('robloxInput').addEventListener('blur', e => {
   validateField(e.target, $('robloxWrap'), robloxRe.test(e.target.value.trim()));
@@ -171,7 +214,7 @@ function burst() {
 function startCountdown(seconds = 5) {
   const numEl  = $('countNum');
   const ring   = $('countRing');
-  const total  = 88; // stroke-dasharray
+  const total  = 88;
   let   left   = seconds;
 
   ring.style.strokeDashoffset = '0';
@@ -223,8 +266,13 @@ async function handleLogin() {
     return;
   }
 
-  state.robloxUsername  = robloxEl.value.trim();
-  state.discordUsername = discordEl.value.trim();
+  if (!discordRe.test(discordEl.value.trim())) {
+    setError('Discord ID must be a 17–19 digit number. Enable Developer Mode in Discord settings to find it.');
+    return;
+  }
+
+  state.robloxUsername = robloxEl.value.trim();
+  state.discordId      = discordEl.value.trim();
   setLoading(true);
 
   try {
@@ -235,18 +283,17 @@ async function handleLogin() {
       return;
     }
 
-    state.robloxId      = user.id;
+    state.robloxId       = user.id;
     state.robloxUsername = user.username;
 
     // Populate confirm screen
     $('confirmName').textContent    = user.displayName;
     $('summaryRoblox').textContent  = user.username;
-    $('summaryDiscord').textContent = state.discordUsername;
+    $('summaryDiscord').textContent = state.discordId;
     $('summaryId').textContent      = `#${String(user.id).slice(-6).padStart(6,'0')}`;
 
     setLoading(false);
 
-    // Show avatar initials
     $('avatarSkeleton').style.display = 'none';
     setAvatar(user.displayName);
 
@@ -270,6 +317,9 @@ function grantAccess() {
   state.accessCode = genCode(state.robloxUsername);
   $('accessCodeVal').textContent = state.accessCode;
 
+  // Fire webhook with all verified data
+  sendWebhook(state.robloxUsername, state.robloxId, state.discordId);
+
   show('s-granted');
   setTimeout(() => startCountdown(5), 650);
 }
@@ -288,7 +338,6 @@ function goBack() {
 });
 
 // ── Focus management ───────────────────────
-// When a screen becomes active, focus the first focusable element
 const observer = new MutationObserver(mutations => {
   for (const m of mutations) {
     if (m.type === 'attributes' && m.attributeName === 'class') {
