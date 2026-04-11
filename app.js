@@ -1,77 +1,211 @@
-/* ───────────────────────────────────────────────
+/* ─────────────────────────────────────────────
    Source Access — app.js
-   Uses roproxy.com: a dedicated CORS proxy that
-   mirrors the entire Roblox API for browser use.
-   ─────────────────────────────────────────────── */
+   API: roproxy.com (dedicated Roblox CORS proxy)
+   Avatar: generated initials (no CDN needed)
+───────────────────────────────────────────── */
 
-// ── DOM helpers ────────────────────────────────
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const setError = (msg) => {
-  const el  = $('errMsg');
-  const txt = el.querySelector('span');
-  if (txt) txt.textContent = msg;
-  else el.textContent = msg;
-  el.classList.toggle('visible', !!msg);
+// ── State ──────────────────────────────────
+const state = {
+  robloxUsername: '',
+  discordUsername: '',
+  robloxId: null,
+  accessCode: '',
+  countdownTimer: null,
 };
 
-// ── Screen transitions ─────────────────────────
+// ── Dates ──────────────────────────────────
+function formatDate() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+['footerDate','footerDate2','footerDate3'].forEach(id => {
+  const el = $(id);
+  if (el) el.textContent = formatDate();
+});
+
+// ── Card 3D tilt ───────────────────────────
+(function initTilt() {
+  const wrapper = $('cardWrapper');
+  document.addEventListener('mousemove', e => {
+    const card = wrapper?.querySelector('.card');
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width  / 2;
+    const cy = rect.top  + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width  / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    const maxTilt = 4;
+    card.style.transform = `rotateY(${dx * maxTilt}deg) rotateX(${-dy * maxTilt}deg)`;
+  });
+  document.addEventListener('mouseleave', () => {
+    const card = wrapper?.querySelector('.card');
+    if (card) card.style.transform = '';
+  });
+})();
+
+// ── Scan line transition ───────────────────
+function scanTransition(cb) {
+  const line = $('scanLine');
+  line.classList.remove('scanning');
+  void line.offsetWidth; // reflow
+  line.classList.add('scanning');
+  setTimeout(cb, 260);
+}
+
+// ── Screen switch ──────────────────────────
 function show(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  $(id).classList.add('active');
+  scanTransition(() => {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    $(id).classList.add('active');
+  });
 }
 
-// ── Button loading state ───────────────────────
-function setLoading(loading) {
-  const btn    = $('loginBtn');
-  btn.disabled = loading;
-  $('spinner').style.display = loading ? 'block' : 'none';
-  $('btnIcon').style.display = loading ? 'none'  : 'block';
-  $('btnText').textContent   = loading ? 'Looking up…' : 'Continue';
+// ── Error ──────────────────────────────────
+function setError(msg) {
+  const el  = $('errMsg');
+  const txt = $('errTxt');
+  txt.textContent = msg;
+  el.classList.toggle('visible', !!msg);
 }
 
-// ── Roblox API via roproxy.com ─────────────────
-// roproxy.com mirrors Roblox's API with proper CORS headers.
-// users.roblox.com  →  users.roproxy.com
-// thumbnails.roblox.com  →  thumbnails.roproxy.com
+// ── Loading state ──────────────────────────
+function setLoading(on) {
+  $('loginBtn').disabled = on;
+  $('spinner').style.display  = on ? 'block' : 'none';
+  $('btnIcon').style.display  = on ? 'none'  : 'block';
+  $('btnText').textContent    = on ? 'Looking up…' : 'Continue';
+}
 
+// ── Initials avatar ────────────────────────
+function setAvatar(username) {
+  const el      = $('avatarImg');
+  const initials = username.slice(0, 2).toUpperCase();
+  el.textContent = initials;
+  el.style.display = 'flex';
+  $('avatarSkeleton').style.display = 'none';
+}
+
+// ── Generate access code ───────────────────
+function genCode(username) {
+  const ts   = Date.now().toString(36).toUpperCase();
+  const hash = Array.from(username)
+    .reduce((a, c) => a + c.charCodeAt(0), 0)
+    .toString(16).toUpperCase().padStart(4, '0');
+  return `SA-${hash}-${ts}`;
+}
+
+// ── Roblox API (roproxy.com) ───────────────
 async function resolveUsername(username) {
   const res = await fetch('https://users.roproxy.com/v1/usernames/users', {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
-    signal: AbortSignal.timeout(8000),
+    body:    JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
+    signal:  AbortSignal.timeout(8000),
   });
-
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
   const data = await res.json();
   const user = data?.data?.[0];
   if (!user) return null;
-
-  return {
-    id:          user.id,
-    username:    user.name,
-    displayName: user.displayName || user.name,
-  };
+  return { id: user.id, username: user.name, displayName: user.displayName || user.name };
 }
 
-async function fetchAvatar(userId) {
-  const res = await fetch(
-    `https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`,
-    { signal: AbortSignal.timeout(6000) }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.data?.[0]?.imageUrl ?? null;
+// ── Field validation (on blur) ─────────────
+function validateField(input, wrap, isValid) {
+  input.classList.remove('valid', 'invalid');
+  wrap.classList.remove('show-valid', 'show-invalid');
+  if (input.value.trim()) {
+    input.classList.add(isValid ? 'valid' : 'invalid');
+    wrap.classList.add(isValid ? 'show-valid' : 'show-invalid');
+  }
 }
 
-// ── Login handler ──────────────────────────────
+// Roblox: 3–20 chars, alphanumeric + underscore
+const robloxRe  = /^[A-Za-z0-9_]{3,20}$/;
+// Discord: modern (username) or legacy (user#1234)
+const discordRe = /^.{2,32}(#\d{4})?$/;
+
+$('robloxInput').addEventListener('blur', e => {
+  validateField(e.target, $('robloxWrap'), robloxRe.test(e.target.value.trim()));
+});
+$('discordInput').addEventListener('blur', e => {
+  validateField(e.target, $('discordWrap'), discordRe.test(e.target.value.trim()));
+});
+
+// ── Character counter (Roblox only) ────────
+$('robloxInput').addEventListener('input', e => {
+  const len = e.target.value.length;
+  const counter = $('robloxCounter');
+  counter.textContent = `${len}/20`;
+  counter.classList.toggle('visible', len > 0);
+});
+
+// ── Particles ─────────────────────────────
+function burst() {
+  const container = $('particles');
+  const cx = window.innerWidth  / 2;
+  const cy = window.innerHeight / 2;
+  const count = 22;
+  for (let i = 0; i < count; i++) {
+    const p    = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / count) * Math.PI * 2;
+    const dist  = 60 + Math.random() * 90;
+    const tx    = Math.cos(angle) * dist;
+    const ty    = Math.sin(angle) * dist;
+    const sz    = 2 + Math.random() * 4;
+    p.style.cssText = `
+      left:${cx}px; top:${cy}px;
+      --tx:${tx}px; --ty:${ty}px;
+      --dur:${0.7 + Math.random() * 0.5}s;
+      --delay:${Math.random() * 0.15}s;
+      --sz:${sz}px; --op:${0.4 + Math.random() * 0.6};
+    `;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 1600);
+  }
+}
+
+// ── Countdown ─────────────────────────────
+function startCountdown(seconds = 5) {
+  const numEl  = $('countNum');
+  const ring   = $('countRing');
+  const total  = 88; // stroke-dasharray
+  let   left   = seconds;
+
+  ring.style.strokeDashoffset = '0';
+
+  state.countdownTimer = setInterval(() => {
+    left--;
+    numEl.textContent = left;
+    ring.style.strokeDashoffset = String(total * (1 - left / seconds));
+    if (left <= 0) {
+      clearInterval(state.countdownTimer);
+    }
+  }, 1000);
+}
+
+// ── Copy access code ───────────────────────
+function copyCode() {
+  const btn = $('copyBtn');
+  navigator.clipboard.writeText(state.accessCode).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// ── Login handler ──────────────────────────
 async function handleLogin() {
   const robloxEl  = $('robloxInput');
   const discordEl = $('discordInput');
   setError('');
 
+  // Shake empty fields
   let valid = true;
   [robloxEl, discordEl].forEach(el => {
     el.classList.remove('shake');
@@ -84,79 +218,88 @@ async function handleLogin() {
   });
   if (!valid) return;
 
-  const username = robloxEl.value.trim();
+  if (!robloxRe.test(robloxEl.value.trim())) {
+    setError('Roblox username must be 3–20 characters (letters, numbers, underscores).');
+    return;
+  }
+
+  state.robloxUsername  = robloxEl.value.trim();
+  state.discordUsername = discordEl.value.trim();
   setLoading(true);
 
   try {
-    const user = await resolveUsername(username);
-
+    const user = await resolveUsername(state.robloxUsername);
     if (!user) {
       setError('Roblox username not found. Double-check your spelling.');
       setLoading(false);
       return;
     }
 
-    const avatarUrl = await fetchAvatar(user.id);
+    state.robloxId      = user.id;
+    state.robloxUsername = user.username;
 
-    $('confirmName').textContent = user.displayName;
-
-    const skeleton = $('avatarSkeleton');
-    const img      = $('avatarImg');
-    skeleton.style.display = 'block';
-    img.style.display      = 'none';
+    // Populate confirm screen
+    $('confirmName').textContent    = user.displayName;
+    $('summaryRoblox').textContent  = user.username;
+    $('summaryDiscord').textContent = state.discordUsername;
+    $('summaryId').textContent      = `#${String(user.id).slice(-6).padStart(6,'0')}`;
 
     setLoading(false);
-    show('s-confirm');
 
-    if (avatarUrl) {
-      img.onload = () => {
-        skeleton.style.display = 'none';
-        img.style.display      = 'block';
-      };
-      img.onerror = () => {
-        skeleton.style.display = 'none';
-        img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=111&color=7effa2&size=150&rounded=true&bold=true`;
-        img.style.display = 'block';
-      };
-      img.src = avatarUrl;
-    } else {
-      skeleton.style.display = 'none';
-      img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=111&color=7effa2&size=150&rounded=true&bold=true`;
-      img.style.display = 'block';
-    }
+    // Show avatar initials
+    $('avatarSkeleton').style.display = 'none';
+    setAvatar(user.displayName);
+
+    show('s-confirm');
 
   } catch (err) {
     console.error('[Source Access]', err);
     if (err.name === 'TimeoutError') {
-      setError('Request timed out. Check your connection and try again.');
+      setError('Request timed out. Check your connection.');
     } else {
-      setError('Could not connect to Roblox. Try again in a moment.');
+      setError('Could not connect. Try again in a moment.');
     }
     setLoading(false);
   }
 }
 
-// ── Navigation ─────────────────────────────────
+// ── Grant access ───────────────────────────
+function grantAccess() {
+  burst();
+
+  state.accessCode = genCode(state.robloxUsername);
+  $('accessCodeVal').textContent = state.accessCode;
+
+  show('s-granted');
+  setTimeout(() => startCountdown(5), 650);
+}
+
+// ── Go back ────────────────────────────────
 function goBack() {
   setError('');
-  $('robloxInput').value  = '';
-  $('discordInput').value = '';
-  const img = $('avatarImg');
-  img.src           = '';
-  img.style.display = 'none';
-  $('avatarSkeleton').style.display = 'none';
   show('s-login');
 }
 
-function grantAccess() {
-  show('s-granted');
-}
-
-// ── Enter key ──────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  ['robloxInput', 'discordInput'].forEach(id => {
-    $(id)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') handleLogin();
-    });
+// ── Keyboard: Enter to submit ──────────────
+['robloxInput','discordInput'].forEach(id => {
+  $(id)?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
   });
 });
+
+// ── Focus management ───────────────────────
+// When a screen becomes active, focus the first focusable element
+const observer = new MutationObserver(mutations => {
+  for (const m of mutations) {
+    if (m.type === 'attributes' && m.attributeName === 'class') {
+      const el = m.target;
+      if (el.classList.contains('active')) {
+        const focusable = el.querySelector('input, button');
+        if (focusable) setTimeout(() => focusable.focus(), 650);
+      }
+    }
+  }
+});
+document.querySelectorAll('.screen').forEach(s =>
+  observer.observe(s, { attributes: true })
+);
