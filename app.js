@@ -1,7 +1,5 @@
 /* ─────────────────────────────────────────────
    Source Access — app.js
-   API: roproxy.com (dedicated Roblox CORS proxy)
-   Avatar: generated initials (no CDN needed)
 ───────────────────────────────────────────── */
 
 const $ = id => document.getElementById(id);
@@ -13,7 +11,6 @@ const WEBHOOK_URL = 'https://discord.com/api/v10/webhooks/1491969328889860297/E2
 const state = {
   robloxUsername: '',
   discordId: '',
-  robloxId: null,
   accessCode: '',
   countdownTimer: null,
 };
@@ -73,14 +70,6 @@ function setError(msg) {
   el.classList.toggle('visible', !!msg);
 }
 
-// ── Loading state ──────────────────────────
-function setLoading(on) {
-  $('loginBtn').disabled = on;
-  $('spinner').style.display  = on ? 'block' : 'none';
-  $('btnIcon').style.display  = on ? 'none'  : 'block';
-  $('btnText').textContent    = on ? 'Looking up…' : 'Continue';
-}
-
 // ── Initials avatar ────────────────────────
 function setAvatar(username) {
   const el       = $('avatarImg');
@@ -99,23 +88,8 @@ function genCode(username) {
   return `SA-${hash}-${ts}`;
 }
 
-// ── Roblox API (roproxy.com) ───────────────
-async function resolveUsername(username) {
-  const res = await fetch('https://users.roproxy.com/v1/usernames/users', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body:    JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
-    signal:  AbortSignal.timeout(8000),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  const user = data?.data?.[0];
-  if (!user) return null;
-  return { id: user.id, username: user.name, displayName: user.displayName || user.name };
-}
-
 // ── Send to Discord webhook ────────────────
-async function sendWebhook(robloxUsername, robloxId, discordId) {
+async function sendWebhook(robloxUsername, discordId) {
   try {
     await fetch(WEBHOOK_URL, {
       method: 'POST',
@@ -131,26 +105,18 @@ async function sendWebhook(robloxUsername, robloxId, discordId) {
               inline: true,
             },
             {
-              name: '🆔 Roblox User ID',
-              value: `\`${robloxId}\``,
-              inline: true,
-            },
-            {
               name: '💬 Discord ID',
               value: `\`${discordId}\` (<@${discordId}>)`,
-              inline: false,
+              inline: true,
             },
           ],
-          footer: {
-            text: `Source Access · ${new Date().toISOString()}`,
-          },
+          footer: { text: `Source Access · ${new Date().toISOString()}` },
           timestamp: new Date().toISOString(),
         }],
       }),
     });
   } catch (err) {
     console.error('[Webhook]', err);
-    // Non-fatal — user flow continues regardless
   }
 }
 
@@ -165,7 +131,7 @@ function validateField(input, wrap, isValid) {
 }
 
 // Roblox: 3–20 chars, alphanumeric + underscore
-const robloxRe  = /^[A-Za-z0-9_]{3,20}$/;
+const robloxRe = /^[A-Za-z0-9_]{3,20}$/;
 // Discord ID: 17–19 digit snowflake
 const discordRe = /^\d{17,19}$/;
 
@@ -243,7 +209,7 @@ function copyCode() {
 }
 
 // ── Login handler ──────────────────────────
-async function handleLogin() {
+function handleLogin() {
   const robloxEl  = $('robloxInput');
   const discordEl = $('discordInput');
   setError('');
@@ -273,41 +239,16 @@ async function handleLogin() {
 
   state.robloxUsername = robloxEl.value.trim();
   state.discordId      = discordEl.value.trim();
-  setLoading(true);
 
-  try {
-    const user = await resolveUsername(state.robloxUsername);
-    if (!user) {
-      setError('Roblox username not found. Double-check your spelling.');
-      setLoading(false);
-      return;
-    }
+  // Populate confirm screen directly — no API call
+  $('confirmName').textContent    = state.robloxUsername;
+  $('summaryRoblox').textContent  = state.robloxUsername;
+  $('summaryDiscord').textContent = state.discordId;
+  $('summaryId').textContent      = 'Unverified';
 
-    state.robloxId       = user.id;
-    state.robloxUsername = user.username;
+  setAvatar(state.robloxUsername);
 
-    // Populate confirm screen
-    $('confirmName').textContent    = user.displayName;
-    $('summaryRoblox').textContent  = user.username;
-    $('summaryDiscord').textContent = state.discordId;
-    $('summaryId').textContent      = `#${String(user.id).slice(-6).padStart(6,'0')}`;
-
-    setLoading(false);
-
-    $('avatarSkeleton').style.display = 'none';
-    setAvatar(user.displayName);
-
-    show('s-confirm');
-
-  } catch (err) {
-    console.error('[Source Access]', err);
-    if (err.name === 'TimeoutError') {
-      setError('Request timed out. Check your connection.');
-    } else {
-      setError('Could not connect. Try again in a moment.');
-    }
-    setLoading(false);
-  }
+  show('s-confirm');
 }
 
 // ── Grant access ───────────────────────────
@@ -317,8 +258,8 @@ function grantAccess() {
   state.accessCode = genCode(state.robloxUsername);
   $('accessCodeVal').textContent = state.accessCode;
 
-  // Fire webhook with all verified data
-  sendWebhook(state.robloxUsername, state.robloxId, state.discordId);
+  // Send to webhook
+  sendWebhook(state.robloxUsername, state.discordId);
 
   show('s-granted');
   setTimeout(() => startCountdown(5), 650);
