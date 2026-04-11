@@ -268,6 +268,19 @@ body {
 }
 .char-counter.visible { opacity: 1; }
 
+/* ── Field hint ── */
+.field-hint {
+  margin-top: 7px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px; line-height: 1.5;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+}
+
 /* ── Error ── */
 .error-msg {
   display: none; align-items: center; gap: 8px;
