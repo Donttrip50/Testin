@@ -1,0 +1,23 @@
+{
+  "name": "source-access",
+  "version": "1.0.0",
+  "description": "- **Express server** with session-based auth (cookies) - **Roblox API integration** — automatically verifies gamepass ownership before accepting an order - **Discord webhook** (server-side only — URL never exposed to the browser) - **Admin panel** with tabs: Orders, Blacklist, Gamepass Links - **Blacklisting** by Roblox username, Discord ID, or IP address - **Gamepass link management** — set/replace per-plan links from the admin panel - **Remember me cookies** — saves Roblox username + Discord ID for 30 days - **Admin session cookies** — stay logged into admin for 7 days - **Randomized admin key** — generated on first boot, sent to your Discord webhook - **Persistent storage** via `data/db.json`",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "crypto": "^1.0.1",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "lowdb": "^1.0.0",
+    "node-fetch": "^2.7.0",
+    "uuid": "^13.0.0"
+  }
+}
