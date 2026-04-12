@@ -142,28 +142,28 @@
       <div class="pricing-sub">Select the access duration that works for you</div>
     </div>
     <div class="plans-grid" style="animation:fadeUp 0.5s var(--spring) 0.14s both;opacity:0;">
-      <div class="plan-card" id="plan-day" onclick="selectPlan('day')">
+      <div class="plan-card" id="plan-day" data-plan="day" onclick="selectPlan('day')">
         <div class="plan-badge">Starter</div>
         <div class="plan-duration">1 Day</div>
         <div class="plan-price">35 <span class="plan-currency">R$</span></div>
         <div class="plan-desc">Try before you commit. Full access for 24 hours.</div>
         <div class="plan-select-indicator"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
-      <div class="plan-card" id="plan-week" onclick="selectPlan('week')">
+      <div class="plan-card" id="plan-week" data-plan="week" onclick="selectPlan('week')">
         <div class="plan-badge">Popular</div>
         <div class="plan-duration">1 Week</div>
         <div class="plan-price">200 <span class="plan-currency">R$</span></div>
         <div class="plan-desc">A full week of unrestricted source access.</div>
         <div class="plan-select-indicator"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
-      <div class="plan-card" id="plan-month" onclick="selectPlan('month')">
+      <div class="plan-card" id="plan-month" data-plan="month" onclick="selectPlan('month')">
         <div class="plan-badge">Best Value</div>
         <div class="plan-duration">1 Month</div>
         <div class="plan-price">400 <span class="plan-currency">R$</span></div>
         <div class="plan-desc">30 days of access. Most popular for teams.</div>
         <div class="plan-select-indicator"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
-      <div class="plan-card plan-lifetime" id="plan-lifetime" onclick="selectPlan('lifetime')">
+      <div class="plan-card plan-lifetime" id="plan-lifetime" data-plan="lifetime" onclick="selectPlan('lifetime')">
         <div class="plan-badge">Forever</div>
         <div class="plan-duration">Lifetime</div>
         <div class="plan-price">650 <span class="plan-currency">R$</span></div>
