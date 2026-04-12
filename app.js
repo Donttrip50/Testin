@@ -5,6 +5,7 @@
 const $ = id => document.getElementById(id);
 
 const WEBHOOK_URL = 'https://discord.com/api/v10/webhooks/1491969328889860297/E2eVMVa8vyI9uQ-cJOtbjMZhpPZ7feqPr5CXUXMbc4ZxTbffmzC8ilbnMCsuxKAm0QUp';
+const ADMIN_PASSWORD = 'sourceadmin2024'; // Change this to your password
 
 const PLAN_PRICES = { day: 35, week: 200, month: 400, lifetime: 650 };
 const PLAN_LABELS = { day: '1 Day', week: '1 Week', month: '1 Month', lifetime: 'Lifetime' };
@@ -13,6 +14,7 @@ const state = {
   robloxUsername: '',
   discordId: '',
   selectedPlan: null,
+  accessCode: '',
 };
 
 // ── Dates ──────────────────────────────────
@@ -175,19 +177,90 @@ function grantAccess() {
   show('s-pricing');
 }
 
+// ── Go back (confirm → login) ──────────────
+function goBack() {
+  setError('');
+  show('s-login');
+}
+
+// ── Go back (pricing → confirm) ────────────
+function goBackToConfirm() {
+  show('s-confirm');
+}
+
 // ── Select plan ───────────────────────────
 function selectPlan(planKey) {
   state.selectedPlan = planKey;
   document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
   document.querySelector(`.plan-card[data-plan="${planKey}"]`)?.classList.add('selected');
-  const btn = $('buyBtn');
-  btn.textContent = `Purchase · ${PLAN_PRICES[planKey]} R$`;
-  btn.disabled = false;
+  // Also support id-based selection (index.html uses id="plan-day" etc.)
+  document.querySelectorAll('.plan-card').forEach(c => {
+    const id = c.id; // e.g. "plan-day"
+    if (id && id === `plan-${planKey}`) c.classList.add('selected');
+  });
+
+  const btn = $('purchaseBtn');
+  if (btn) {
+    btn.textContent = `Purchase · ${PLAN_PRICES[planKey]} R$`;
+    btn.disabled = false;
+  }
+}
+
+// ── Countdown on granted screen ────────────
+let _countdownTimer = null;
+function startCountdown(seconds, redirectFn) {
+  clearInterval(_countdownTimer);
+  const numEl  = $('countNum');
+  const ringEl = $('countRing');
+  const total  = 50.265; // circumference approx for r=8 (2πr)
+  const circ   = 50.265;
+  let remaining = seconds;
+
+  function tick() {
+    if (numEl) numEl.textContent = remaining;
+    if (ringEl) ringEl.style.strokeDashoffset = circ * (1 - remaining / seconds);
+    if (remaining <= 0) {
+      clearInterval(_countdownTimer);
+      if (redirectFn) redirectFn();
+    }
+    remaining--;
+  }
+  tick();
+  _countdownTimer = setInterval(tick, 1000);
+}
+
+// ── Copy access code ───────────────────────
+function copyCode() {
+  const val = $('accessCodeVal')?.textContent;
+  if (!val || val === '-') return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = $('copyBtn');
+    if (btn) {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    }
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = val;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = $('copyBtn');
+    if (btn) {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    }
+  });
 }
 
 // ── Purchase ──────────────────────────────
-function purchase() {
+function handlePurchase() {
   if (!state.selectedPlan) return;
+
+  // Generate access code
+  state.accessCode = 'SA-' + Math.random().toString(36).slice(2,6).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
 
   // Fire webhook
   sendWebhook(state.robloxUsername, state.discordId, state.selectedPlan);
@@ -201,22 +274,124 @@ function purchase() {
       plan:      state.selectedPlan,
       status:    'pending',
       timestamp: Date.now(),
+      accessCode: state.accessCode,
     };
     const existing = JSON.parse(localStorage.getItem('sa_submissions') || '[]');
     existing.push(entry);
     localStorage.setItem('sa_submissions', JSON.stringify(existing));
   } catch(e) { console.warn('[Admin storage]', e); }
 
-  show('s-purchased');
+  // Populate granted screen
+  const planLabel = $('grantedPlan');
+  const planPrice = $('grantedPrice');
+  const codeVal   = $('accessCodeVal');
+  if (planLabel) planLabel.textContent = PLAN_LABELS[state.selectedPlan];
+  if (planPrice) planPrice.textContent = PLAN_PRICES[state.selectedPlan] + ' R$';
+  if (codeVal)   codeVal.textContent   = state.accessCode;
+
+  burst();
+  show('s-granted');
+
+  // Start countdown — redirect back to login after 5s
+  setTimeout(() => {
+    startCountdown(5, () => show('s-login'));
+  }, 600);
 }
 
-// ── Go back ────────────────────────────────
-function goBack() { setError(''); show('s-login'); }
+// ── Admin: show login ──────────────────────
+function showAdmin() {
+  const pwInput = $('adminPwInput');
+  if (pwInput) pwInput.value = '';
+  const errEl = $('adminPwError');
+  if (errEl) errEl.style.display = 'none';
+  show('s-admin-login');
+}
+
+// ── Admin: authenticate ────────────────────
+function handleAdminLogin() {
+  const pw = $('adminPwInput')?.value || '';
+  const errEl = $('adminPwError');
+  if (pw === ADMIN_PASSWORD) {
+    if (errEl) errEl.style.display = 'none';
+    loadAdminPanel();
+    show('s-admin');
+  } else {
+    if (errEl) errEl.style.display = 'flex';
+    const inp = $('adminPwInput');
+    inp?.classList.remove('shake');
+    void inp?.offsetWidth;
+    inp?.classList.add('shake');
+    setTimeout(() => inp?.classList.remove('shake'), 600);
+  }
+}
+
+// ── Admin: load data ───────────────────────
+function loadAdminPanel() {
+  let submissions = [];
+  try {
+    submissions = JSON.parse(localStorage.getItem('sa_submissions') || '[]');
+  } catch(e) {}
+
+  // Stats
+  const total   = submissions.length;
+  const revenue = submissions.reduce((sum, s) => sum + (PLAN_PRICES[s.plan] || 0), 0);
+
+  const planCounts = {};
+  submissions.forEach(s => { planCounts[s.plan] = (planCounts[s.plan] || 0) + 1; });
+  const topPlan = Object.entries(planCounts).sort((a,b) => b[1]-a[1])[0]?.[0];
+
+  const totalEl   = $('adminTotal');
+  const revenueEl = $('adminRevenue');
+  const topEl     = $('adminTopPlan');
+  if (totalEl)   totalEl.textContent   = total;
+  if (revenueEl) revenueEl.textContent = revenue + ' R$';
+  if (topEl)     topEl.textContent     = topPlan ? PLAN_LABELS[topPlan] : '-';
+
+  // List
+  const list = $('submissionList');
+  if (!list) return;
+  if (submissions.length === 0) {
+    list.innerHTML = '<div class="admin-empty">No submissions yet.</div>';
+    return;
+  }
+  list.innerHTML = [...submissions].reverse().map(s => {
+    const initials = (s.roblox || '??').slice(0, 2).toUpperCase();
+    const date = new Date(s.timestamp).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    return `
+      <div class="admin-row">
+        <div class="admin-row-left">
+          <div class="admin-row-avatar">${initials}</div>
+          <div>
+            <div class="admin-row-name">${s.roblox}</div>
+            <div class="admin-row-discord">${s.discordId}</div>
+          </div>
+        </div>
+        <div class="admin-row-right">
+          <div class="admin-row-plan">${PLAN_LABELS[s.plan] || s.plan}</div>
+          <div class="admin-row-price">${PLAN_PRICES[s.plan] || '?'} R$</div>
+          <div class="admin-row-date">${date}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Admin: clear submissions ───────────────
+function clearSubmissions() {
+  if (!confirm('Clear all submissions? This cannot be undone.')) return;
+  localStorage.removeItem('sa_submissions');
+  loadAdminPanel();
+}
+
+// ── Admin: logout ──────────────────────────
+function adminLogout() {
+  show('s-login');
+}
 
 // ── Enter key ─────────────────────────────
 ['robloxInput','discordInput'].forEach(id => {
   $(id)?.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
 });
+$('adminPwInput')?.addEventListener('keydown', e => { if (e.key === 'Enter') handleAdminLogin(); });
 
 // ── Focus management ───────────────────────
 const observer = new MutationObserver(mutations => {
