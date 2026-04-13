@@ -157,8 +157,9 @@
         <div class="plan-price">200 <span class="plan-currency">R$</span></div>
         <div class="plan-desc">7 days of<br/>full access.</div>
       </div>
-      <div class="plan-card" data-plan="month" id="plan-month" onclick="selectPlan('month')">
+      <div class="plan-card plan-popular" data-plan="month" id="plan-month" onclick="selectPlan('month')">
         <div class="plan-select-indicator"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="popular-pill">Most Popular</div>
         <div class="plan-badge">Monthly</div>
         <div class="plan-duration">1 Month</div>
         <div class="plan-price">400 <span class="plan-currency">R$</span></div>
@@ -214,9 +215,13 @@
         <div class="perm-row"><div class="perm-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Source repository access</div>
         <div class="perm-row"><div class="perm-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Community server invite</div>
       </div>
-      <div class="access-code-row">
+      <div class="access-code-row" id="accessCodeRow">
         <div class="access-code-val" id="accessCodeVal">-</div>
-        <button class="btn btn-copy" id="copyBtn" onclick="copyCode()">Copy</button>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyCode()">
+          <svg id="copyIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <svg id="copyCheck" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="copyBtnText">Copy</span>
+        </button>
       </div>
       <div class="countdown-wrap">
         <svg class="countdown-ring-svg" width="20" height="20" viewBox="0 0 20 20">
@@ -284,9 +289,21 @@
 
     <!-- Stats -->
     <div class="admin-stats" style="animation:fadeUp 0.5s var(--spring) 0.08s both;opacity:0;width:100%;">
-      <div class="stat-block"><div class="stat-val" id="adminTotal">0</div><div class="stat-label">Total Orders</div></div>
-      <div class="stat-block"><div class="stat-val" id="adminRevenue">0 R$</div><div class="stat-label">Revenue</div></div>
-      <div class="stat-block"><div class="stat-val" id="adminTopPlan">-</div><div class="stat-label">Top Plan</div></div>
+      <div class="stat-block stat-block--orders">
+        <div class="stat-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
+        <div class="stat-val" id="adminTotal">0</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+      <div class="stat-block stat-block--revenue">
+        <div class="stat-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="stat-val" id="adminRevenue">0 R$</div>
+        <div class="stat-label">Revenue</div>
+      </div>
+      <div class="stat-block stat-block--plan">
+        <div class="stat-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+        <div class="stat-val" id="adminTopPlan">-</div>
+        <div class="stat-label">Top Plan</div>
+      </div>
     </div>
 
     <!-- Admin tabs -->
