@@ -241,8 +241,23 @@ function copyCode() {
   const val = $('accessCodeVal')?.textContent;
   if (!val || val === '-') return;
   navigator.clipboard.writeText(val).then(() => {
-    const btn = $('copyBtn');
-    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy', 2000); }
+    const btn      = $('copyBtn');
+    const icon     = $('copyIcon');
+    const check    = $('copyCheck');
+    const txt      = $('copyBtnText');
+    const codeRow  = $('accessCodeRow');
+    if (btn)  btn.classList.add('copied');
+    if (icon) icon.style.display = 'none';
+    if (check) check.style.display = 'inline';
+    if (txt)  txt.textContent = 'Copied!';
+    if (codeRow) codeRow.classList.add('glowing');
+    setTimeout(() => {
+      if (btn)  btn.classList.remove('copied');
+      if (icon) icon.style.display = 'inline';
+      if (check) check.style.display = 'none';
+      if (txt)  txt.textContent = 'Copy';
+      if (codeRow) codeRow.classList.remove('glowing');
+    }, 2200);
   });
 }
 
@@ -293,6 +308,8 @@ async function handlePurchase() {
 
     burst();
     show('s-granted');
+    // Second burst after screen animates in for extra effect
+    setTimeout(() => burst(), 450);
     setTimeout(() => startCountdown(5, () => show('s-login')), 600);
 
   } catch(e) {
@@ -368,9 +385,17 @@ async function loadAdminStats() {
     const res  = await fetch('/api/admin/stats');
     const data = await res.json();
     const el = id => $(id);
-    if (el('adminTotal'))   el('adminTotal').textContent   = data.total;
-    if (el('adminRevenue')) el('adminRevenue').textContent = data.revenue + ' R$';
-    if (el('adminTopPlan')) el('adminTopPlan').textContent = data.topPlan || '-';
+    function animateStat(id, val) {
+      const el = $(id);
+      if (!el) return;
+      el.classList.remove('animating');
+      void el.offsetWidth;
+      el.textContent = val;
+      el.classList.add('animating');
+    }
+    animateStat('adminTotal',   data.total);
+    animateStat('adminRevenue', data.revenue + ' R$');
+    animateStat('adminTopPlan', data.topPlan || '-');
   } catch(e) {}
 }
 
@@ -387,8 +412,8 @@ async function loadAdminOrders() {
       const initials = (s.roblox || '??').slice(0, 2).toUpperCase();
       const date     = new Date(s.timestamp).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
       const verified = s.verified
-        ? '<span class="bl-tag" style="background:rgba(100,255,150,0.08);color:rgba(100,255,150,0.7);border-color:rgba(100,255,150,0.15);">✓ verified</span>'
-        : '<span class="bl-tag">pending</span>';
+        ? '<span class="status-badge verified">verified</span>'
+        : '<span class="status-badge pending">pending</span>';
       return `
         <div class="admin-row">
           <div class="admin-row-left">
@@ -530,9 +555,18 @@ async function regenAdminKey() {
 // ── Admin tabs ─────────────────────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-panel').forEach(p => {
+    p.classList.remove('active');
+    p.style.animation = 'none';
+  });
   document.querySelector(`.admin-tab[onclick="switchTab('${name}')"]`)?.classList.add('active');
-  $('tab-' + name)?.classList.add('active');
+  const panel = $('tab-' + name);
+  if (panel) {
+    panel.style.animation = 'none';
+    void panel.offsetWidth; // force reflow
+    panel.style.animation = '';
+    panel.classList.add('active');
+  }
 }
 
 // ── Enter key shortcuts ────────────────────────────────────────────────────
