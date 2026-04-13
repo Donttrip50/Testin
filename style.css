@@ -526,6 +526,91 @@ body {
 }
 .btn-xs:hover { border-color:var(--border-bright); color:var(--text); }
 
+/* ── PLAN CARDS: POPULAR BADGE ─────────────────────────────────────────── */
+.popular-pill {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace; font-size: 7px; letter-spacing: 0.16em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px;
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.75);
+}
+.plan-popular {
+  border-color: rgba(255,255,255,0.18);
+}
+.plan-popular.selected {
+  border-color: rgba(255,255,255,0.45);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 0 24px rgba(255,255,255,0.07), 0 8px 32px rgba(0,0,0,0.4);
+}
+.plan-card.selected {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.12), 0 0 20px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ── ACCESS CODE: GLOW + COPY BUTTON ───────────────────────────────────── */
+.access-code-row {
+  transition: box-shadow 0.4s var(--ease-io), border-color 0.4s var(--ease-io);
+}
+.access-code-row.glowing {
+  border-color: rgba(0,230,118,0.35);
+  box-shadow: 0 0 0 3px rgba(0,230,118,0.06), 0 0 18px rgba(0,230,118,0.1);
+}
+.btn-copy {
+  display: flex; align-items: center; gap: 5px;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn-copy.copied {
+  color: #00e676;
+  border-color: rgba(0,230,118,0.4);
+  background: rgba(0,230,118,0.06);
+}
+
+/* ── STAT CARDS: ICONS + ACCENT TOP BORDER ─────────────────────────────── */
+.stat-block {
+  position: relative; overflow: hidden;
+}
+.stat-block::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  border-radius: 2px 2px 0 0; opacity: 0.7;
+}
+.stat-block--orders::before { background: linear-gradient(90deg, rgba(100,180,255,0.6), rgba(100,180,255,0.1)); }
+.stat-block--revenue::before { background: linear-gradient(90deg, rgba(0,230,118,0.6), rgba(0,230,118,0.1)); }
+.stat-block--plan::before    { background: linear-gradient(90deg, rgba(255,200,80,0.6), rgba(255,200,80,0.1)); }
+.stat-icon {
+  color: var(--text-faint); margin-bottom: 10px;
+  display: flex; align-items: center;
+}
+.stat-val { transition: color 0.3s; }
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-val.animating { animation: countUp 0.45s var(--spring) both; }
+
+/* ── ADMIN TAB PANEL TRANSITIONS ────────────────────────────────────────── */
+.admin-tab-panel {
+  display: none;
+  animation: tabIn 0.3s var(--spring) both;
+}
+.admin-tab-panel.active {
+  display: block;
+}
+@keyframes tabIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── MOBILE FIXES ───────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .wrapper { padding: 1.25rem 1rem; }
+  .card { padding: 1.4rem 1.25rem 1.2rem; }
+  .field-input { font-size: 16px; } /* prevents iOS zoom */
+  .plans-grid { gap: 8px; }
+  .plan-card { padding: 13px 11px; }
+  .plan-price { font-size: 19px; }
+  .admin-stats { gap: 7px; }
+  .stat-val { font-size: 17px; }
+  .granted-card { padding: 1.2rem; }
+}
+
 /* ── REMEMBER ME ───────────────────────────────────────────────────────── */
 .remember-row {
   display:flex; align-items:center; gap:8px; margin-top:2px;
